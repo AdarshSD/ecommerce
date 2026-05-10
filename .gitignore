@@ -1,0 +1,6 @@
+# Ignore everything
+*
+
+# Allow these tracked files
+!.gitignore
+!README.md
