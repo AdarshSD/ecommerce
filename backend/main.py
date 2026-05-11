@@ -32,9 +32,21 @@ import models  # noqa: F401, E402
 # Routers
 from api.auth import router as auth_router  # noqa: E402
 from api.users import router as users_router  # noqa: E402
+from api.products import router as products_router  # noqa: E402
+from api.categories import router as categories_router  # noqa: E402
+from api.linked_entities import router as entities_router  # noqa: E402
+from api.admin.products import router as admin_products_router  # noqa: E402
+from api.admin.categories import router as admin_categories_router  # noqa: E402
+from api.admin.linked_entities import router as admin_entities_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(products_router)
+app.include_router(categories_router)
+app.include_router(entities_router)
+app.include_router(admin_products_router)
+app.include_router(admin_categories_router)
+app.include_router(admin_entities_router)
 
 
 @app.get("/health", tags=["Health"], summary="Health check")
