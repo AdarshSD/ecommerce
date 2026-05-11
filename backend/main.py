@@ -26,6 +26,16 @@ app.add_middleware(
 os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
 app.mount("/media", StaticFiles(directory=settings.MEDIA_ROOT), name="media")
 
+# Register all models with SQLAlchemy before any router imports them
+import models  # noqa: F401, E402
+
+# Routers
+from api.auth import router as auth_router  # noqa: E402
+from api.users import router as users_router  # noqa: E402
+
+app.include_router(auth_router)
+app.include_router(users_router)
+
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict:

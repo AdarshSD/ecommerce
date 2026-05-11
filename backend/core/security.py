@@ -2,31 +2,34 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+from jose import jwt
 
 from core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
-
-# Pre-computed dummy hash used to prevent timing attacks on login
-# (we run a bcrypt verify even when the user doesn't exist)
-_DUMMY_HASH = pwd_context.hash("__timing_safety_dummy__")
-
 ALGORITHM = "HS256"
+_BCRYPT_ROUNDS = 12
+
+# Pre-computed dummy hash used to prevent timing attacks on login.
+# We always run bcrypt.checkpw even when the user doesn't exist.
+_DUMMY_HASH: bytes = bcrypt.hashpw(b"__dummy__", bcrypt.gensalt(_BCRYPT_ROUNDS))
 
 
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(_BCRYPT_ROUNDS)).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def verify_password_timing_safe(plain: str, hashed: str | None) -> bool:
     """Always runs bcrypt even when hashed is None to prevent timing attacks."""
-    return pwd_context.verify(plain, hashed if hashed is not None else _DUMMY_HASH)
+    check_against = hashed.encode() if hashed is not None else _DUMMY_HASH
+    try:
+        return bcrypt.checkpw(plain.encode(), check_against)
+    except Exception:
+        return False
 
 
 def create_access_token(sub: str, role: str) -> str:
