@@ -38,6 +38,8 @@ from api.linked_entities import router as entities_router  # noqa: E402
 from api.admin.products import router as admin_products_router  # noqa: E402
 from api.admin.categories import router as admin_categories_router  # noqa: E402
 from api.admin.linked_entities import router as admin_entities_router  # noqa: E402
+from api.config import router as config_router  # noqa: E402
+from api.admin.config import router as admin_config_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -47,6 +49,8 @@ app.include_router(entities_router)
 app.include_router(admin_products_router)
 app.include_router(admin_categories_router)
 app.include_router(admin_entities_router)
+app.include_router(config_router)
+app.include_router(admin_config_router)
 
 
 @app.get("/health", tags=["Health"], summary="Health check")
