@@ -1,0 +1,104 @@
+from enum import Enum
+
+
+class Role(str, Enum):
+    CUSTOMER = "CUSTOMER"
+    ADMIN = "ADMIN"
+    SUPER_ADMIN = "SUPER_ADMIN"
+
+
+class OrderStatus(str, Enum):
+    CONFIRMED = "CONFIRMED"
+    PROCESSING = "PROCESSING"
+    SHIPPED = "SHIPPED"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
+    REFUNDED = "REFUNDED"
+
+
+# Valid status transitions: key → set of allowed next statuses
+ORDER_STATUS_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
+    OrderStatus.CONFIRMED: {OrderStatus.PROCESSING, OrderStatus.CANCELLED},
+    OrderStatus.PROCESSING: {OrderStatus.SHIPPED, OrderStatus.CANCELLED},
+    OrderStatus.SHIPPED: {OrderStatus.DELIVERED, OrderStatus.REFUNDED},
+    OrderStatus.DELIVERED: set(),
+    OrderStatus.CANCELLED: set(),
+    OrderStatus.REFUNDED: set(),
+}
+
+
+class PaymentStatus(str, Enum):
+    DUMMY = "DUMMY"
+    PENDING = "PENDING"      # [P3-PAYMENT]
+    PAID = "PAID"            # [P3-PAYMENT]
+    FAILED = "FAILED"        # [P3-PAYMENT]
+    REFUNDED = "REFUNDED"    # [P3-PAYMENT]
+
+
+class InventoryChangeReason(str, Enum):
+    INITIAL_STOCK = "INITIAL_STOCK"
+    ORDER_PLACED = "ORDER_PLACED"
+    ORDER_CANCELLED = "ORDER_CANCELLED"
+    ADMIN_UPDATE = "ADMIN_UPDATE"
+    SYSTEM_CORRECTION = "SYSTEM_CORRECTION"
+
+
+class CartMergeStrategy(str, Enum):
+    KEEP_USER = "keep_user"
+    KEEP_GUEST = "keep_guest"
+    COMBINE = "combine"
+    SAVE_LATER = "save_later"   # [P2]
+
+
+class ErrorCode(str, Enum):
+    # Auth
+    INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
+    EMAIL_ALREADY_EXISTS = "EMAIL_ALREADY_EXISTS"
+    ACCOUNT_INACTIVE = "ACCOUNT_INACTIVE"
+    EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED"
+    NO_REFRESH_TOKEN = "NO_REFRESH_TOKEN"
+    SESSION_EXPIRED = "SESSION_EXPIRED"
+    AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
+    FORBIDDEN = "FORBIDDEN"
+    INVALID_TOKEN = "INVALID_TOKEN"
+    TOKEN_EXPIRED = "TOKEN_EXPIRED"
+    # Products
+    PRODUCT_NOT_FOUND = "PRODUCT_NOT_FOUND"
+    PRODUCT_OUT_OF_STOCK = "PRODUCT_OUT_OF_STOCK"
+    INSUFFICIENT_STOCK = "INSUFFICIENT_STOCK"
+    ISBN_ALREADY_EXISTS = "ISBN_ALREADY_EXISTS"
+    # Cart
+    CART_ITEM_NOT_FOUND = "CART_ITEM_NOT_FOUND"
+    NO_GUEST_CART = "NO_GUEST_CART"
+    # Orders
+    CART_EMPTY = "CART_EMPTY"
+    ADDRESS_NOT_FOUND = "ADDRESS_NOT_FOUND"
+    STOCK_CONFLICT = "STOCK_CONFLICT"
+    INVALID_STATUS_TRANSITION = "INVALID_STATUS_TRANSITION"
+    ORDER_NOT_FOUND = "ORDER_NOT_FOUND"
+    # Entities / Categories
+    ENTITY_NOT_FOUND = "ENTITY_NOT_FOUND"
+    ENTITY_HAS_PRODUCTS = "ENTITY_HAS_PRODUCTS"
+    CATEGORY_NOT_FOUND = "CATEGORY_NOT_FOUND"
+    CATEGORY_HAS_PRODUCTS = "CATEGORY_HAS_PRODUCTS"
+    # Config
+    CONFIG_NOT_FOUND = "CONFIG_NOT_FOUND"
+    CONFIG_VERSION_NOT_FOUND = "CONFIG_VERSION_NOT_FOUND"
+    SECTION_NOT_FOUND = "SECTION_NOT_FOUND"
+    INVALID_COLOUR_FORMAT = "INVALID_COLOUR_FORMAT"
+    # General
+    NOT_FOUND = "NOT_FOUND"
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+
+
+class HomepageSectionType(str, Enum):
+    HERO = "hero"
+    FEATURED = "featured"
+    BESTSELLER = "bestseller"
+    NEW_ARRIVALS = "new_arrivals"
+    CATEGORIES = "categories"
+    CATEGORY = "category"
+    ENTITY = "entity"
+    RECOMMENDED = "recommended"   # [P3]
+    CUSTOM = "custom"
