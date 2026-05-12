@@ -2,10 +2,11 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { ShoppingCart, ArrowLeft } from "lucide-react";
-import { useProduct } from "@/lib/api/products";
+import { ArrowLeft, ShoppingBag, Heart, Star, BookOpen, Award, Share2 } from "lucide-react";
+import { useProduct, useProducts } from "@/lib/api/products";
 import { useAddToCart } from "@/lib/api/cart";
 import { useUIStore } from "@/lib/store/uiStore";
+import ProductCard from "@/components/store/ProductCard";
 
 export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -13,15 +14,37 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const addToCart = useAddToCart();
   const { addToast, openCartDrawer } = useUIStore();
 
+  // Related: same primary category, exclude current
+  const primaryCatId = product?.categories?.[0]?.id;
+  const { data: related } = useProducts({ category_id: primaryCatId, page_size: 5 });
+  const relatedBooks = primaryCatId ? (related?.data.filter((p) => p.id !== id).slice(0, 4) ?? []) : [];
+
+  function handleAddToCart() {
+    if (!product) return;
+    addToCart.mutate(
+      { product_id: product.id, quantity: 1 },
+      {
+        onSuccess: () => {
+          addToast({ message: `"${product.title}" added to cart`, type: "success" });
+          openCartDrawer();
+        },
+        onError: () => addToast({ message: "Could not add to cart", type: "error" }),
+      }
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="aspect-[3/4] bg-[var(--color-border)] rounded-xl animate-pulse" />
-          <div className="space-y-4">
-            <div className="h-8 bg-[var(--color-border)] rounded animate-pulse w-3/4" />
-            <div className="h-4 bg-[var(--color-border)] rounded animate-pulse w-1/2" />
-            <div className="h-12 bg-[var(--color-border)] rounded animate-pulse w-1/4" />
+      <div className="min-h-screen" style={{ background: "var(--color-background)" }}>
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
+          <div className="h-4 w-32 rounded animate-pulse mb-8" style={{ background: "var(--color-border)" }} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="aspect-[3/4] rounded-2xl animate-pulse" style={{ background: "var(--color-border)" }} />
+            <div className="space-y-4">
+              {[32, 24, 16, 48, 16, 16].map((h, i) => (
+                <div key={i} className="rounded animate-pulse" style={{ height: h, background: "var(--color-border)", width: i === 0 ? "80%" : i === 2 ? "40%" : "100%" }} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -30,99 +53,250 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
   if (!product) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-20 text-center">
-        <p className="text-[var(--color-text-secondary)]">Book not found.</p>
-        <Link href="/products" className="mt-4 inline-block text-[var(--color-accent)] hover:underline text-sm">
-          ← Back to all books
-        </Link>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-background)" }}>
+        <div className="text-center">
+          <p className="font-display text-2xl mb-4" style={{ color: "var(--color-text-primary)" }}>Book not found</p>
+          <Link href="/products" className="text-sm font-medium" style={{ color: "var(--color-accent)" }}>
+            ← Back to all books
+          </Link>
+        </div>
       </div>
     );
   }
 
-  function handleAddToCart() {
-    addToCart.mutate(
-      { product_id: product!.id, quantity: 1 },
-      {
-        onSuccess: () => {
-          addToast({ message: `"${product!.title}" added to cart`, type: "success" });
-          openCartDrawer();
-        },
-        onError: () => addToast({ message: "Could not add to cart", type: "error" }),
-      }
-    );
-  }
+  const discountPct = product.original_price
+    ? Math.round((1 - product.price / product.original_price) * 100)
+    : null;
+
+  const coverUrl = product.cover_full_url ?? product.cover_image_url;
+
+  const meta = [
+    { icon: BookOpen, label: "Pages",  value: product.pages ?? product.page_count ?? "—" },
+    { icon: Award,    label: "Format", value: product.format ?? "—" },
+    { icon: BookOpen, label: "Year",   value: product.year ?? (product.published_at ? new Date(product.published_at).getFullYear() : "—") },
+    { icon: Star,     label: "Rating", value: product.rating ? `${product.rating}/5` : "—" },
+  ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
-      <Link href="/products" className="inline-flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] mb-8 transition-base">
-        <ArrowLeft size={14} /> All books
-      </Link>
+    <div className="min-h-screen" style={{ background: "var(--color-background)" }}>
+      {/* Breadcrumb */}
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 pt-8 pb-2">
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 text-sm transition-colors group"
+          style={{ color: "var(--color-text-muted)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-primary)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Browse
+        </Link>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* Cover */}
-        <div className="aspect-[3/4] bg-[var(--color-border)] rounded-xl overflow-hidden">
-          {product.cover_full_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.cover_full_url} alt={product.title} className="w-full h-full object-cover" />
-          ) : product.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.cover_image_url} alt={product.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[var(--color-text-secondary)] p-8 text-center text-sm">
-              {product.title}
+      {/* Main */}
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 xl:gap-20">
+          {/* Cover */}
+          <div className="flex justify-center lg:justify-start">
+            <div className="relative">
+              <div
+                className="relative rounded-2xl overflow-hidden"
+                style={{
+                  width: "clamp(260px, 32vw, 380px)",
+                  boxShadow: "0 32px 80px rgba(13,34,24,0.25), 0 8px 16px rgba(13,34,24,0.1)",
+                }}
+              >
+                {coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={coverUrl} alt={product.title} className="w-full h-auto block" />
+                ) : (
+                  <div className="aspect-[3/4] flex items-center justify-center p-8 text-center"
+                       style={{ background: "var(--color-cream-dark)", color: "var(--color-text-muted)" }}>
+                    {product.title}
+                  </div>
+                )}
+              </div>
+
+              {/* Shadow blob */}
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-4/5 h-8 blur-2xl rounded-full opacity-30"
+                   style={{ background: "var(--color-primary)" }} />
+
+              {/* Badge */}
+              {product.badge && (
+                <div className="absolute -top-3 -right-3 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg"
+                     style={{ background: "var(--color-accent)", color: "var(--color-primary-dark)" }}>
+                  {product.badge}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Details */}
-        <div className="space-y-5">
-          <div>
-            <h1 className="text-3xl font-semibold text-[var(--color-text-primary)] leading-tight">{product.title}</h1>
-            {product.linked_entities && product.linked_entities.length > 0 && (
-              <p className="text-[var(--color-text-secondary)] mt-2 text-sm">
-                by {product.linked_entities.map((e) => e.name).join(", ")}
+          {/* Details */}
+          <div className="space-y-6">
+            {/* Genre */}
+            {product.primary_genre && (
+              <p className="text-xs tracking-[0.2em] uppercase font-semibold"
+                 style={{ color: "var(--color-accent)" }}>
+                {product.primary_genre}
               </p>
             )}
-          </div>
 
-          <p className="text-3xl font-bold text-[var(--color-accent)]">${Number(product.price).toFixed(2)}</p>
+            {/* Title */}
+            <h1 className="font-display font-bold leading-tight"
+                style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)", color: "var(--color-text-primary)" }}>
+              {product.title}
+            </h1>
 
-          {product.categories && product.categories.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {product.categories.map((c) => (
-                <span key={c.id} className="text-xs bg-[var(--color-border)] text-[var(--color-text-secondary)] px-3 py-1 rounded-full">
-                  {c.name}
-                </span>
+            {/* Author */}
+            <p className="text-lg" style={{ color: "var(--color-text-secondary)" }}>
+              by{" "}
+              <span className="font-medium" style={{ color: "var(--color-text-primary)" }}>
+                {product.linked_entities?.map((e) => e.name).join(", ") ?? product.primary_author ?? "Unknown"}
+              </span>
+            </p>
+
+            {/* Ratings */}
+            {product.rating && (
+              <div className="flex items-center gap-4 pb-1">
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star key={i} size={16}
+                      fill={i < Math.floor(product.rating!) ? "var(--color-accent)" : "none"}
+                      style={{ color: i < Math.floor(product.rating!) ? "var(--color-accent)" : "var(--color-border)" }}
+                    />
+                  ))}
+                  <span className="font-semibold ml-1" style={{ color: "var(--color-text-primary)" }}>
+                    {product.rating}
+                  </span>
+                </div>
+                {product.reviews_count > 0 && (
+                  <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+                    {product.reviews_count.toLocaleString()} reviews
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Description */}
+            <p className="leading-relaxed text-base" style={{ color: "var(--color-text-secondary)" }}>
+              {product.long_description ?? product.description ?? ""}
+            </p>
+
+            {/* Tags */}
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {product.tags.map((tag) => (
+                  <span key={tag} className="text-xs px-3 py-1 rounded-full font-medium"
+                        style={{ background: "var(--color-cream-dark)", color: "var(--color-text-secondary)" }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Metadata grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 rounded-2xl p-5 border"
+                 style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+              {meta.map(({ icon: Icon, label, value }) => (
+                <div key={label} className="text-center">
+                  <Icon size={16} className="mx-auto mb-1" style={{ color: "var(--color-accent)" }} />
+                  <p className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>{label}</p>
+                  <p className="text-sm font-semibold" style={{ color: "var(--color-text-primary)" }}>{value}</p>
+                </div>
               ))}
             </div>
-          )}
 
-          {product.description && (
-            <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">{product.description}</p>
-          )}
+            {/* Price + CTA */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-baseline gap-3">
+                <span className="font-display font-bold" style={{ fontSize: "2.25rem", color: "var(--color-primary)" }}>
+                  ${Number(product.price).toFixed(2)}
+                </span>
+                {product.original_price && (
+                  <span className="text-lg line-through" style={{ color: "var(--color-border)" }}>
+                    ${Number(product.original_price).toFixed(2)}
+                  </span>
+                )}
+                {discountPct && (
+                  <span className="text-sm font-semibold px-2 py-0.5 rounded-full"
+                        style={{ background: "#dcfce7", color: "#16a34a" }}>
+                    {discountPct}% off
+                  </span>
+                )}
+              </div>
 
-          <div className="grid grid-cols-2 gap-2 text-sm text-[var(--color-text-secondary)]">
-            {product.format && <span>Format: <span className="text-[var(--color-text-primary)]">{product.format}</span></span>}
-            {product.page_count && <span>Pages: <span className="text-[var(--color-text-primary)]">{product.page_count}</span></span>}
-            {product.publisher && <span>Publisher: <span className="text-[var(--color-text-primary)]">{product.publisher}</span></span>}
-            {product.published_at && <span>Published: <span className="text-[var(--color-text-primary)]">{new Date(product.published_at).getFullYear()}</span></span>}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddToCart}
+                  disabled={!product.is_in_stock || addToCart.isPending}
+                  className="flex-1 flex items-center justify-center gap-2.5 font-semibold py-4 rounded-2xl transition-all text-sm tracking-wide"
+                  style={{
+                    background: product.is_in_stock ? "var(--color-primary)" : "var(--color-border)",
+                    color: product.is_in_stock ? "#FAF7F2" : "var(--color-text-muted)",
+                    cursor: product.is_in_stock ? "pointer" : "not-allowed",
+                  }}
+                >
+                  <ShoppingBag size={18} />
+                  {!product.is_in_stock ? "Out of Stock" : addToCart.isPending ? "Adding…" : "Add to Cart"}
+                </button>
+                <button
+                  className="w-14 h-14 flex items-center justify-center rounded-2xl border-2 transition-all"
+                  style={{ borderColor: "var(--color-border)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--color-accent)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(201,168,76,0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)";
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                  }}
+                  aria-label="Wishlist"
+                >
+                  <Heart size={18} style={{ color: "var(--color-text-muted)" }} />
+                </button>
+                <button
+                  className="w-14 h-14 flex items-center justify-center rounded-2xl border-2 transition-all"
+                  style={{ borderColor: "var(--color-border)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--color-primary)";
+                    (e.currentTarget as HTMLElement).style.background = "rgba(26,58,42,0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = "var(--color-border)";
+                    (e.currentTarget as HTMLElement).style.background = "transparent";
+                  }}
+                  aria-label="Share"
+                >
+                  <Share2 size={16} style={{ color: "var(--color-text-muted)" }} />
+                </button>
+              </div>
+
+              <p className="text-xs flex items-center gap-2" style={{ color: "var(--color-text-muted)" }}>
+                <span className="w-2 h-2 rounded-full inline-block" style={{ background: product.is_in_stock ? "#4ade80" : "#f87171" }} />
+                {product.is_in_stock ? "In stock · Free shipping on orders over $50" : "Currently out of stock"}
+              </p>
+            </div>
           </div>
-
-          {product.is_in_stock ? (
-            <button
-              onClick={handleAddToCart}
-              disabled={addToCart.isPending}
-              className="w-full bg-[var(--color-accent)] text-white font-medium py-3.5 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-base disabled:opacity-60 text-sm"
-            >
-              <ShoppingCart size={18} />
-              {addToCart.isPending ? "Adding…" : "Add to Cart"}
-            </button>
-          ) : (
-            <button disabled className="w-full bg-[var(--color-border)] text-[var(--color-text-secondary)] font-medium py-3.5 rounded-xl cursor-not-allowed text-sm">
-              Out of Stock
-            </button>
-          )}
         </div>
+
+        {/* Related books */}
+        {relatedBooks.length > 0 && (
+          <div className="mt-24">
+            <div className="mb-10">
+              <p className="text-xs tracking-[0.2em] uppercase font-medium mb-2" style={{ color: "var(--color-accent)" }}>
+                You May Also Like
+              </p>
+              <h2 className="font-display font-bold text-3xl" style={{ color: "var(--color-text-primary)" }}>
+                More in {product.primary_genre ?? "This Genre"}
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+              {relatedBooks.map((b) => (
+                <ProductCard key={b.id} product={b} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

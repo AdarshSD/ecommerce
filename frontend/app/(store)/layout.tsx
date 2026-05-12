@@ -14,12 +14,16 @@ export default async function StoreLayout({ children }: { children: React.ReactN
   const cssVars = config
     ? ({
         "--color-primary":         config.primary_colour,
+        "--color-primary-dark":    "#0D2218",
+        "--color-primary-mid":     "#2D5438",
         "--color-secondary":       config.secondary_colour,
         "--color-accent":          config.accent_colour,
         "--color-background":      config.background_colour,
         "--color-surface":         config.surface_colour,
+        "--color-cream-dark":      "#F0EBE3",
         "--color-text-primary":    config.text_primary_colour,
         "--color-text-secondary":  config.text_secondary_colour,
+        "--color-text-muted":      "#9CA3AF",
         "--color-border":          config.border_colour,
         "--font-family":           `'${config.font_family}', sans-serif`,
       } as React.CSSProperties)

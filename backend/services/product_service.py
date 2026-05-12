@@ -58,6 +58,8 @@ async def list_products(db: AsyncSession, filters: dict) -> tuple[list[Product],
         q = q.where(Product.is_recommended.is_(filters["is_recommended"]))
     if filters.get("is_bestseller") is not None:
         q = q.where(Product.is_bestseller.is_(filters["is_bestseller"]))
+    if filters.get("is_new_arrival") is not None:
+        q = q.where(Product.is_new_arrival.is_(filters["is_new_arrival"]))
     if filters.get("search"):
         q = q.where(Product.title.ilike(f"%{filters['search']}%"))  # [P2] → FTS/Elasticsearch
 
@@ -67,6 +69,10 @@ async def list_products(db: AsyncSession, filters: dict) -> tuple[list[Product],
     page_size = filters.get("page_size", 20)
     q = _apply_sort(q, filters.get("sort", "newest"))
     q = q.offset((page - 1) * page_size).limit(page_size)
+    q = q.options(
+        selectinload(Product.category_links).selectinload(ProductCategoryLink.category),
+        selectinload(Product.entity_links).selectinload(ProductEntityLink.entity),
+    )
 
     products = list((await db.execute(q)).scalars().all())
     return products, total
@@ -126,7 +132,11 @@ async def get_section_products(db: AsyncSession, section_id: str) -> list[Produc
     if sort_by:
         q = _apply_sort(select(Product).where(Product.is_deleted.is_(False), Product.is_in_stock.is_(True)), sort_by)
 
-    return list((await db.execute(q.limit(limit))).scalars().all())
+    q = q.limit(limit).options(
+        selectinload(Product.category_links).selectinload(ProductCategoryLink.category),
+        selectinload(Product.entity_links).selectinload(ProductEntityLink.entity),
+    )
+    return list((await db.execute(q)).scalars().all())
 
 
 async def _sync_links(db: AsyncSession, product: Product, category_ids: list[uuid.UUID], entity_ids: list[uuid.UUID]) -> None:

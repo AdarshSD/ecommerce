@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingBag, Heart, Star } from "lucide-react";
 import { Product } from "@/lib/api/products";
 import { useAddToCart } from "@/lib/api/cart";
 import { useUIStore } from "@/lib/store/uiStore";
@@ -30,59 +30,124 @@ export default function ProductCard({ product, currencySymbol = "$" }: Props) {
     );
   }
 
-  return (
-    <Link href={`/products/${product.id}`} className="group block">
-      <div className="card-hover rounded-xl overflow-hidden bg-[var(--color-surface)] border border-[var(--color-border)] shadow-sm">
-        {/* Cover */}
-        <div className="aspect-[3/4] bg-[var(--color-border)] overflow-hidden relative">
-          {product.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.cover_image_url}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[var(--color-text-secondary)] p-4 text-center text-xs">
-              {product.title}
-            </div>
-          )}
+  const discountPct = product.original_price
+    ? Math.round((1 - product.price / product.original_price) * 100)
+    : null;
 
-          {/* Add to cart overlay on hover */}
+  return (
+    <Link href={`/products/${product.id}`} className="group block book-card">
+      {/* Cover */}
+      <div className="relative aspect-[3/4] rounded-xl overflow-hidden mb-3 shadow-md group-hover:shadow-xl transition-shadow duration-300">
+        {product.cover_image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.cover_image_url}
+            alt={product.title}
+            className="book-cover w-full h-full object-cover transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center p-4 text-center text-xs"
+               style={{ background: "var(--color-cream-dark)", color: "var(--color-text-muted)" }}>
+            {product.title}
+          </div>
+        )}
+
+        {/* Hover overlay */}
+        <div className="card-overlay absolute inset-0 opacity-0 transition-opacity duration-300 flex flex-col justify-end"
+             style={{ background: "linear-gradient(to top, rgba(13,34,24,0.92) 0%, rgba(13,34,24,0.4) 60%, transparent 100%)" }}>
           {product.is_in_stock && (
             <button
               onClick={handleAddToCart}
               disabled={addToCart.isPending}
-              className="absolute bottom-0 left-0 right-0 bg-[var(--color-accent)] text-white py-2.5 text-xs font-medium
-                opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center gap-1.5"
+              className="mx-3 mb-3 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: "var(--color-accent)", color: "var(--color-primary-dark)" }}
             >
-              <ShoppingCart size={14} />
-              Add to Cart
+              <ShoppingBag size={13} />
+              {addToCart.isPending ? "Adding…" : "Add to Cart"}
             </button>
-          )}
-
-          {!product.is_in_stock && (
-            <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-              Out of stock
-            </div>
           )}
         </div>
 
-        {/* Info */}
-        <div className="p-3">
-          <h3 className="text-sm font-medium text-[var(--color-text-primary)] line-clamp-2 leading-snug">
-            {product.title}
-          </h3>
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-sm font-semibold text-[var(--color-accent)]">
-              {currencySymbol}{Number(product.price).toFixed(2)}
-            </span>
-            {product.format && (
-              <span className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-border)] px-2 py-0.5 rounded-full">
-                {product.format}
-              </span>
-            )}
+        {/* Wishlist button */}
+        <button
+          onClick={(e) => e.preventDefault()}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 backdrop-blur-sm"
+          style={{ background: "rgba(255,255,255,0.15)" }}
+          aria-label="Wishlist"
+        >
+          <Heart size={12} style={{ color: "#FAF7F2" }} />
+        </button>
+
+        {/* Badge */}
+        {product.badge && (
+          <div className="absolute top-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full"
+               style={{ background: "var(--color-primary)", color: "var(--color-accent)" }}>
+            {product.badge}
           </div>
+        )}
+
+        {/* Discount % */}
+        {discountPct && (
+          <div className="absolute bottom-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full"
+               style={{ background: "#16a34a", color: "#fff" }}>
+            -{discountPct}%
+          </div>
+        )}
+
+        {!product.is_in_stock && (
+          <div className="absolute bottom-2 left-2 text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">
+            Out of stock
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div>
+        {product.primary_genre && (
+          <p className="text-[9px] tracking-widest uppercase font-medium mb-0.5"
+             style={{ color: "var(--color-accent)" }}>
+            {product.primary_genre}
+          </p>
+        )}
+
+        <h3 className="font-display font-semibold text-sm leading-tight line-clamp-2 mb-0.5 group-hover:opacity-80 transition-opacity"
+            style={{ color: "var(--color-text-primary)" }}>
+          {product.title}
+        </h3>
+
+        {product.primary_author && (
+          <p className="text-xs mb-1.5" style={{ color: "var(--color-text-muted)" }}>
+            {product.primary_author}
+          </p>
+        )}
+
+        {/* Stars */}
+        {product.rating && (
+          <div className="flex items-center gap-1 mb-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star
+                key={i}
+                size={9}
+                fill={i < Math.floor(product.rating!) ? "var(--color-accent)" : "none"}
+                style={{ color: i < Math.floor(product.rating!) ? "var(--color-accent)" : "var(--color-border)" }}
+              />
+            ))}
+            <span className="text-[9px] ml-0.5" style={{ color: "var(--color-text-muted)" }}>
+              {product.rating}
+            </span>
+          </div>
+        )}
+
+        {/* Price */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-bold" style={{ color: "var(--color-primary)" }}>
+            {currencySymbol}{Number(product.price).toFixed(2)}
+          </span>
+          {product.original_price && (
+            <span className="text-xs line-through" style={{ color: "var(--color-text-muted)" }}>
+              {currencySymbol}{Number(product.original_price).toFixed(2)}
+            </span>
+          )}
         </div>
       </div>
     </Link>

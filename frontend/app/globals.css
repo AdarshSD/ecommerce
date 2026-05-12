@@ -1,29 +1,100 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Default CSS variable values — overwritten at runtime by store config injection */
+/* ─── Design tokens ───────────────────────────────────────────────────────── */
+@theme inline {
+  --font-display: var(--font-playfair);
+  --font-sans:    var(--font-inter);
+}
+
+/* ─── Store config defaults (overridden at runtime via inline style prop) ─── */
 :root {
-  --color-primary:          #1a3a2a;
-  --color-secondary:        #2d6a4f;
-  --color-accent:           #52b788;
-  --color-background:       #f8f9f6;
+  --color-primary:          #1A3A2A;
+  --color-primary-dark:     #0D2218;
+  --color-primary-mid:      #2D5438;
+  --color-accent:           #C9A84C;
+  --color-accent-light:     #E8C96A;
+  --color-background:       #FAF7F2;
   --color-surface:          #ffffff;
-  --color-text-primary:     #1a1a1a;
-  --color-text-secondary:   #5a6a60;
-  --color-border:           #e2ede8;
-  --font-family:            'Plus Jakarta Sans', sans-serif;
+  --color-cream-dark:       #F0EBE3;
+  --color-text-primary:     #1A1A1A;
+  --color-text-secondary:   #6B7280;
+  --color-text-muted:       #9CA3AF;
+  --color-border:           #E4DDD4;
+  --font-family:            var(--font-inter), 'Inter', system-ui, sans-serif;
 }
 
-@layer base {
-  body {
-    background-color: var(--color-background);
-    color: var(--color-text-primary);
-    font-family: var(--font-family);
-  }
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-@layer utilities {
-  .card-hover { transition: transform 200ms ease, box-shadow 200ms ease; }
-  .card-hover:hover { transform: translateY(-2px); }
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-playfair), 'Playfair Display', Georgia, serif;
 }
+
+/* ─── Transitions ────────────────────────────────────────────────────────── */
+.transition-base { transition: all 150ms ease; }
+
+/* ─── Card hover ─────────────────────────────────────────────────────────── */
+.card-hover { transition: transform 200ms ease, box-shadow 200ms ease; }
+.card-hover:hover { transform: translateY(-2px); }
+
+/* ─── Book card overlays ─────────────────────────────────────────────────── */
+.book-card:hover .card-overlay { opacity: 1; }
+.book-card:hover .book-cover   { transform: scale(1.04); }
+
+/* ─── Glass nav ──────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(13, 34, 24, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ─── Marquee ────────────────────────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 28s linear infinite; }
+
+/* ─── Float (hero book covers) ───────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(-3deg); }
+  50%       { transform: translateY(-12px) rotate(-3deg); }
+}
+@keyframes float2 {
+  0%, 100% { transform: translateY(0px) rotate(4deg); }
+  50%       { transform: translateY(-18px) rotate(4deg); }
+}
+@keyframes float3 {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-8px) rotate(-1deg); }
+}
+.animate-float  { animation: float  6s ease-in-out infinite; }
+.animate-float2 { animation: float2 8s ease-in-out infinite; }
+.animate-float3 { animation: float3 5s ease-in-out infinite; }
+
+/* ─── Fade up (staggered entry) ─────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up   { animation: fade-up 0.7s ease forwards; }
+.animate-fade-up-2 { animation: fade-up 0.7s 0.15s ease both; }
+.animate-fade-up-3 { animation: fade-up 0.7s 0.30s ease both; }
+.animate-fade-up-4 { animation: fade-up 0.7s 0.45s ease both; }
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-accent); border-radius: 99px; }

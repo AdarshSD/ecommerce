@@ -1,8 +1,9 @@
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import Base, TimestampMixin, UUIDPrimaryKey
@@ -14,12 +15,14 @@ class Product(UUIDPrimaryKey, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    long_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    original_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     cost_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
-    format: Mapped[str | None] = mapped_column(String(30), nullable=True)       # [P4: product_attributes]
-    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)       # [P4: product_attributes]
+    format: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     language: Mapped[str] = mapped_column(String(5), nullable=False, default="en")
-    publisher: Mapped[str | None] = mapped_column(String(200), nullable=True)   # [P4: product_attributes]
+    publisher: Mapped[str | None] = mapped_column(String(200), nullable=True)
     published_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     cover_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     cover_thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -30,9 +33,14 @@ class Product(UUIDPrimaryKey, TimestampMixin, Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     is_recommended: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_bestseller: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    is_new_arrival: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
     bestseller_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     units_sold_30d: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     auto_bestseller: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    rating: Mapped[float | None] = mapped_column(Numeric(3, 2), nullable=True)
+    reviews_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    badge: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     weight_grams: Mapped[int | None] = mapped_column(Integer, nullable=True)
     supplier: Mapped[str | None] = mapped_column(String(200), nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)

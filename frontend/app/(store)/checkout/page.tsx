@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, MapPin, Plus, ShoppingBag } from "lucide-react";
 import { useCart } from "@/lib/api/cart";
-import { useOrders, usePlaceOrder } from "@/lib/api/orders";
+import { usePlaceOrder } from "@/lib/api/orders";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
 import { api } from "@/lib/api/client";
@@ -19,6 +19,24 @@ interface Address {
   postcode: string;
   country_code: string;
   is_default: boolean;
+}
+
+const inputCls = "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all";
+const inputStyle = { background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-text-primary)" };
+
+function FieldInput({ label, value, onChange, required = true }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--color-text-secondary)" }}>{label}</label>
+      <input
+        required={required} value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputCls} style={inputStyle}
+        onFocus={(e) => (e.target.style.borderColor = "var(--color-primary)")}
+        onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
+      />
+    </div>
+  );
 }
 
 export default function CheckoutPage() {
@@ -65,87 +83,202 @@ export default function CheckoutPage() {
     });
   }
 
+  // Order confirmed screen
   if (confirmedOrder) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">Order confirmed!</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-1">Reference: {confirmedOrder.payment_reference}</p>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-8">Total: ${Number(confirmedOrder.total).toFixed(2)}</p>
-        <Link href="/orders" className="text-[var(--color-accent)] hover:underline text-sm font-medium">View my orders →</Link>
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--color-background)" }}>
+        <div className="w-full max-w-md text-center">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+               style={{ background: "var(--color-primary)" }}>
+            <CheckCircle size={36} style={{ color: "var(--color-accent)" }} />
+          </div>
+          <h1 className="font-display font-bold text-3xl mb-2" style={{ color: "var(--color-text-primary)" }}>
+            Order confirmed!
+          </h1>
+          <p className="text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
+            Thank you for your purchase.
+          </p>
+          <p className="font-mono text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>
+            {confirmedOrder.payment_reference}
+          </p>
+          <p className="font-display font-bold text-2xl mt-4 mb-8" style={{ color: "var(--color-primary)" }}>
+            ${Number(confirmedOrder.total).toFixed(2)}
+          </p>
+          <Link href="/orders"
+                className="inline-flex items-center gap-2 font-semibold text-sm px-7 py-3.5 rounded-full"
+                style={{ background: "var(--color-primary)", color: "#FAF7F2" }}>
+            View my orders
+          </Link>
+        </div>
       </div>
     );
   }
 
+  // Empty cart
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <p className="text-[var(--color-text-secondary)]">Your cart is empty.</p>
-        <Link href="/products" className="mt-4 inline-block text-[var(--color-accent)] hover:underline text-sm">Browse books →</Link>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-background)" }}>
+        <div className="text-center">
+          <ShoppingBag size={32} strokeWidth={1.5} className="mx-auto mb-4" style={{ color: "var(--color-text-muted)" }} />
+          <p className="text-sm mb-4" style={{ color: "var(--color-text-secondary)" }}>Your cart is empty.</p>
+          <Link href="/products" className="text-sm font-semibold" style={{ color: "var(--color-accent)" }}>
+            Browse books →
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-      <h1 className="text-3xl font-semibold text-[var(--color-text-primary)] mb-8">Checkout</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left: address */}
-        <div>
-          <h2 className="font-medium text-[var(--color-text-primary)] mb-4">Delivery address</h2>
-          <div className="space-y-3">
-            {addresses.map((addr) => (
-              <label key={addr.id} className={`flex gap-3 p-4 rounded-xl border cursor-pointer transition-base ${selectedAddress === addr.id ? "border-[var(--color-accent)] bg-[var(--color-surface)]" : "border-[var(--color-border)] bg-[var(--color-surface)]"}`}>
-                <input type="radio" name="address" value={addr.id} checked={selectedAddress === addr.id} onChange={() => setSelectedAddress(addr.id)} className="mt-1" />
-                <div className="text-sm">
-                  <p className="font-medium text-[var(--color-text-primary)]">{addr.full_name}</p>
-                  <p className="text-[var(--color-text-secondary)]">{addr.line_1}{addr.line_2 ? `, ${addr.line_2}` : ""}</p>
-                  <p className="text-[var(--color-text-secondary)]">{addr.city}, {addr.postcode} {addr.country_code}</p>
-                </div>
-              </label>
-            ))}
-            <button onClick={() => setShowNewAddr(!showNewAddr)} className="text-sm text-[var(--color-accent)] hover:underline">
-              + Add new address
-            </button>
-            {showNewAddr && (
-              <form onSubmit={handleAddAddress} className="border border-[var(--color-border)] rounded-xl p-4 space-y-3">
-                {[["full_name","Full name"],["line_1","Street address"],["city","City"],["postcode","Postcode"]].map(([field, label]) => (
-                  <div key={field}>
-                    <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">{label}</label>
-                    <input required value={(newAddress as any)[field]} onChange={(e) => setNewAddress((p) => ({...p, [field]: e.target.value}))}
-                      className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
+    <div className="min-h-screen" style={{ background: "var(--color-background)" }}>
+      {/* Header */}
+      <div className="py-10" style={{ background: "var(--color-primary)" }}>
+        <div className="max-w-4xl mx-auto px-5 sm:px-8">
+          <p className="text-xs tracking-[0.2em] uppercase font-medium mb-2" style={{ color: "var(--color-accent)" }}>
+            Secure Checkout
+          </p>
+          <h1 className="font-display font-bold text-3xl" style={{ color: "#FAF7F2" }}>Complete your order</h1>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-5 sm:px-8 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left: Delivery */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-6">
+              <MapPin size={16} style={{ color: "var(--color-accent)" }} />
+              <h2 className="font-semibold" style={{ color: "var(--color-text-primary)" }}>Delivery Address</h2>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              {addresses.map((addr) => (
+                <label
+                  key={addr.id}
+                  className="flex gap-3 p-4 rounded-xl border cursor-pointer transition-all"
+                  style={{
+                    borderColor: selectedAddress === addr.id ? "var(--color-primary)" : "var(--color-border)",
+                    background: selectedAddress === addr.id ? "var(--color-surface)" : "transparent",
+                  }}
+                >
+                  <input type="radio" name="address" value={addr.id}
+                         checked={selectedAddress === addr.id}
+                         onChange={() => setSelectedAddress(addr.id)}
+                         className="mt-0.5 flex-shrink-0 accent-[var(--color-primary)]" />
+                  <div className="text-sm">
+                    <p className="font-semibold" style={{ color: "var(--color-text-primary)" }}>{addr.full_name}</p>
+                    <p style={{ color: "var(--color-text-secondary)" }}>
+                      {addr.line_1}{addr.line_2 ? `, ${addr.line_2}` : ""}
+                    </p>
+                    <p style={{ color: "var(--color-text-secondary)" }}>
+                      {addr.city}, {addr.postcode} · {addr.country_code}
+                    </p>
                   </div>
-                ))}
-                <button type="submit" className="w-full py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm font-medium hover:opacity-90">Save address</button>
+                </label>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowNewAddr(!showNewAddr)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium mb-4"
+              style={{ color: "var(--color-accent)" }}
+            >
+              <Plus size={14} /> Add new address
+            </button>
+
+            {showNewAddr && (
+              <form onSubmit={handleAddAddress}
+                    className="rounded-2xl border p-5 space-y-4 mb-4"
+                    style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+                <FieldInput label="Full name" value={newAddress.full_name}
+                            onChange={(v) => setNewAddress((p) => ({ ...p, full_name: v }))} />
+                <FieldInput label="Street address" value={newAddress.line_1}
+                            onChange={(v) => setNewAddress((p) => ({ ...p, line_1: v }))} />
+                <div className="grid grid-cols-2 gap-3">
+                  <FieldInput label="City" value={newAddress.city}
+                              onChange={(v) => setNewAddress((p) => ({ ...p, city: v }))} />
+                  <FieldInput label="Postcode" value={newAddress.postcode}
+                              onChange={(v) => setNewAddress((p) => ({ ...p, postcode: v }))} />
+                </div>
+                <button type="submit"
+                        className="w-full py-3 rounded-xl text-sm font-semibold"
+                        style={{ background: "var(--color-primary)", color: "#FAF7F2" }}>
+                  Save address
+                </button>
               </form>
             )}
+
             <div>
-              <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block">Delivery notes (optional)</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full px-3 py-2 rounded-lg border border-[var(--color-border)] text-sm focus:outline-none resize-none" />
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--color-text-secondary)" }}>
+                Delivery notes (optional)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                placeholder="Any special instructions…"
+                className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none transition-all"
+                style={inputStyle}
+                onFocus={(e) => (e.target.style.borderColor = "var(--color-primary)")}
+                onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
+              />
             </div>
           </div>
-        </div>
 
-        {/* Right: summary */}
-        <div>
-          <h2 className="font-medium text-[var(--color-text-primary)] mb-4">Order summary</h2>
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 space-y-3">
-            {cart.items.map((item) => (
-              <div key={item.product_id} className="flex justify-between text-sm">
-                <span className="text-[var(--color-text-primary)] truncate pr-4">{item.title} × {item.quantity}</span>
-                <span className="text-[var(--color-text-secondary)] whitespace-nowrap">${item.line_total.toFixed(2)}</span>
+          {/* Right: Summary */}
+          <div>
+            <h2 className="font-semibold mb-6" style={{ color: "var(--color-text-primary)" }}>Order Summary</h2>
+            <div className="rounded-2xl border overflow-hidden"
+                 style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+              <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
+                {cart.items.map((item) => (
+                  <div key={item.product_id} className="flex justify-between items-start px-5 py-4 gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-snug" style={{ color: "var(--color-text-primary)" }}>
+                        {item.title}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                        Qty {item.quantity}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold flex-shrink-0" style={{ color: "var(--color-primary)" }}>
+                      ${Number(item.line_total).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-            <div className="border-t border-[var(--color-border)] pt-3 flex justify-between font-semibold text-[var(--color-text-primary)]">
-              <span>Subtotal</span>
-              <span>${cart.subtotal.toFixed(2)}</span>
+
+              <div className="px-5 py-4 border-t space-y-2" style={{ borderColor: "var(--color-border)" }}>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>${cart.subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: "var(--color-text-muted)" }}>Shipping</span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Calculated at confirmation</span>
+                </div>
+                <div className="flex justify-between font-bold pt-2 border-t"
+                     style={{ borderColor: "var(--color-border)" }}>
+                  <span style={{ color: "var(--color-text-primary)" }}>Total</span>
+                  <span className="font-display text-xl" style={{ color: "var(--color-primary)" }}>
+                    ${cart.subtotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5">
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={placeOrder.isPending || !selectedAddress}
+                  className="w-full py-4 rounded-2xl font-semibold text-sm transition-all disabled:opacity-50"
+                  style={{ background: "var(--color-primary)", color: "#FAF7F2" }}
+                >
+                  {placeOrder.isPending ? "Placing order…" : "Place order"}
+                </button>
+                <p className="text-xs text-center mt-3" style={{ color: "var(--color-text-muted)" }}>
+                  Demo checkout — no real payment is taken
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-[var(--color-text-secondary)]">Shipping and tax calculated at confirmation.</p>
-            <button onClick={handlePlaceOrder} disabled={placeOrder.isPending}
-              className="w-full py-3.5 bg-[var(--color-accent)] text-white rounded-xl font-medium text-sm hover:opacity-90 transition-base disabled:opacity-60 mt-2">
-              {placeOrder.isPending ? "Placing order…" : "Place order"}
-            </button>
-            <p className="text-xs text-center text-[var(--color-text-secondary)]">Demo checkout — no real payment taken</p>
           </div>
         </div>
       </div>

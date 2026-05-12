@@ -3,8 +3,48 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { useRegister } from "@/lib/api/auth";
 import { useUIStore } from "@/lib/store/uiStore";
+
+function AuthInput({
+  label, type, value, onChange, placeholder,
+}: {
+  label: string; type: string; value: string;
+  onChange: (v: string) => void; placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  const isPassword = type === "password";
+
+  return (
+    <div>
+      <label className="block text-xs font-semibold mb-1.5 tracking-wide"
+             style={{ color: "var(--color-text-secondary)" }}>
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={isPassword && show ? "text" : type}
+          required
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+          style={{ background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-text-primary)" }}
+          onFocus={(e) => (e.target.style.borderColor = "var(--color-primary)")}
+          onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
+        />
+        {isPassword && (
+          <button type="button" onClick={() => setShow((s) => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  style={{ color: "var(--color-text-muted)" }}>
+            {show ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,37 +66,49 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[var(--color-surface)] rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">Create account</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-8">
-          Already have one?{" "}
-          <Link href="/login" className="text-[var(--color-accent)] hover:underline font-medium">Sign in</Link>
-        </p>
-        {error && <p className="text-sm text-red-500 mb-4 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {(["first_name", "last_name", "email", "password"] as const).map((field) => (
-            <div key={field}>
-              <label className="text-xs font-medium text-[var(--color-text-secondary)] mb-1 block capitalize">
-                {field.replace("_", " ")}
-              </label>
-              <input
-                type={field === "password" ? "password" : field === "email" ? "email" : "text"}
-                required
-                value={form[field]}
-                onChange={(e) => setForm((f) => ({ ...f, [field]: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-              />
-            </div>
-          ))}
-          <button
-            type="submit" disabled={register.isPending}
-            className="w-full py-3 bg-[var(--color-accent)] text-white rounded-xl font-medium text-sm hover:opacity-90 transition-base disabled:opacity-60"
-          >
-            {register.isPending ? "Creating…" : "Create account"}
-          </button>
-        </form>
-      </div>
+    <div>
+      <h1 className="font-display font-bold text-3xl mb-1" style={{ color: "var(--color-text-primary)" }}>
+        Create your account
+      </h1>
+      <p className="text-sm mb-8" style={{ color: "var(--color-text-secondary)" }}>
+        Already have one?{" "}
+        <Link href="/login" className="font-semibold hover:underline" style={{ color: "var(--color-accent)" }}>
+          Sign in
+        </Link>
+      </p>
+
+      {error && (
+        <div className="mb-5 px-4 py-3 rounded-xl text-sm" style={{ background: "#fef2f2", color: "#dc2626" }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <AuthInput label="First name" type="text" value={form.first_name}
+                     onChange={(v) => setForm((f) => ({ ...f, first_name: v }))} />
+          <AuthInput label="Last name" type="text" value={form.last_name}
+                     onChange={(v) => setForm((f) => ({ ...f, last_name: v }))} />
+        </div>
+        <AuthInput label="Email address" type="email" value={form.email}
+                   onChange={(v) => setForm((f) => ({ ...f, email: v }))} />
+        <AuthInput label="Password" type="password" value={form.password}
+                   onChange={(v) => setForm((f) => ({ ...f, password: v }))} />
+
+        <button
+          type="submit"
+          disabled={register.isPending}
+          className="w-full mt-2 py-3.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60"
+          style={{ background: "var(--color-primary)", color: "#FAF7F2" }}
+        >
+          {register.isPending ? "Creating account…" : "Create account"}
+        </button>
+      </form>
+
+      <p className="mt-8 text-center text-xs" style={{ color: "var(--color-text-muted)" }}>
+        By creating an account you agree to our{" "}
+        <span className="underline cursor-pointer">Terms of Service</span>.
+      </p>
     </div>
   );
 }

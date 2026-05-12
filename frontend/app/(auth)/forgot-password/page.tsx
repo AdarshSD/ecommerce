@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
 import { useForgotPassword } from "@/lib/api/auth";
 
 export default function ForgotPasswordPage() {
@@ -15,35 +17,72 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-md text-center">
-          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-3">Check your email</h1>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            If an account with that address exists, a reset link has been sent.
-          </p>
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6"
+             style={{ background: "var(--color-cream-dark)" }}>
+          <CheckCircle size={28} style={{ color: "var(--color-primary)" }} />
         </div>
+        <h1 className="font-display font-bold text-2xl mb-3" style={{ color: "var(--color-text-primary)" }}>
+          Check your email
+        </h1>
+        <p className="text-sm mb-8" style={{ color: "var(--color-text-secondary)" }}>
+          If an account with <strong>{email}</strong> exists, we&apos;ve sent a password reset link.
+          It may take a minute or two to arrive.
+        </p>
+        <Link href="/login" className="inline-flex items-center gap-2 text-sm font-medium"
+              style={{ color: "var(--color-accent)" }}>
+          <ArrowLeft size={14} /> Back to sign in
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[var(--color-surface)] rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] mb-2">Reset password</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-8">Enter your email and we&apos;ll send a reset link.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email" required value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Your email"
-            className="w-full px-4 py-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-          />
-          <button type="submit" disabled={forgot.isPending}
-            className="w-full py-3 bg-[var(--color-accent)] text-white rounded-xl font-medium text-sm hover:opacity-90 disabled:opacity-60">
-            {forgot.isPending ? "Sending…" : "Send reset link"}
-          </button>
-        </form>
+    <div>
+      <Link href="/login" className="inline-flex items-center gap-1.5 text-sm mb-8"
+            style={{ color: "var(--color-text-muted)" }}>
+        <ArrowLeft size={14} /> Back to sign in
+      </Link>
+
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-6"
+           style={{ background: "var(--color-cream-dark)" }}>
+        <Mail size={20} style={{ color: "var(--color-primary)" }} />
       </div>
+
+      <h1 className="font-display font-bold text-3xl mb-2" style={{ color: "var(--color-text-primary)" }}>
+        Reset your password
+      </h1>
+      <p className="text-sm mb-8" style={{ color: "var(--color-text-secondary)" }}>
+        Enter the email address on your account and we&apos;ll send you a reset link.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold mb-1.5 tracking-wide"
+                 style={{ color: "var(--color-text-secondary)" }}>
+            Email address
+          </label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all"
+            style={{ background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-text-primary)" }}
+            onFocus={(e) => (e.target.style.borderColor = "var(--color-primary)")}
+            onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={forgot.isPending}
+          className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60"
+          style={{ background: "var(--color-primary)", color: "#FAF7F2" }}
+        >
+          {forgot.isPending ? "Sending…" : "Send reset link"}
+        </button>
+      </form>
     </div>
   );
 }

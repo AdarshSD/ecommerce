@@ -1,7 +1,8 @@
 import uuid
 from datetime import date, datetime
+from typing import Any
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, computed_field, field_validator
 
 
 class CategoryBrief(BaseModel):
@@ -24,6 +25,9 @@ class ProductSummary(BaseModel):
     title: str
     isbn: str | None
     price: float
+    original_price: float | None
+    rating: float | None
+    reviews_count: int
     format: str | None
     cover_image_url: str | None
     cover_thumbnail_url: str | None
@@ -31,19 +35,52 @@ class ProductSummary(BaseModel):
     is_featured: bool
     is_bestseller: bool
     is_recommended: bool
+    is_new_arrival: bool
     bestseller_rank: int | None
+    badge: str | None
+    tags: list[Any]
     published_at: date | None
     created_at: datetime
+    categories: list[CategoryBrief] = []
+    linked_entities: list[LinkedEntityBrief] = []
+
+    @computed_field
+    @property
+    def year(self) -> int | None:
+        return self.published_at.year if self.published_at else None
+
+    @computed_field
+    @property
+    def pages(self) -> int | None:
+        return None  # populated in ProductDetail which has page_count
+
+    @computed_field
+    @property
+    def primary_author(self) -> str | None:
+        if self.linked_entities:
+            return self.linked_entities[0].name
+        return None
+
+    @computed_field
+    @property
+    def primary_genre(self) -> str | None:
+        if self.categories:
+            return self.categories[0].name
+        return None
 
 
 class ProductDetail(ProductSummary):
     description: str | None
+    long_description: str | None
     page_count: int | None
     language: str
     publisher: str | None
     cover_full_url: str | None
-    categories: list[CategoryBrief] = []
-    linked_entities: list[LinkedEntityBrief] = []
+
+    @computed_field
+    @property
+    def pages(self) -> int | None:
+        return self.page_count
 
 
 class AdminProductResponse(ProductDetail):
@@ -61,7 +98,9 @@ class CreateProductRequest(BaseModel):
     title: str
     isbn: str | None = None
     description: str | None = None
+    long_description: str | None = None
     price: float
+    original_price: float | None = None
     format: str | None = None
     page_count: int | None = None
     language: str = "en"
@@ -75,7 +114,12 @@ class CreateProductRequest(BaseModel):
     is_featured: bool = False
     is_recommended: bool = False
     is_bestseller: bool = False
+    is_new_arrival: bool = False
     bestseller_rank: int | None = None
+    rating: float | None = None
+    reviews_count: int = 0
+    badge: str | None = None
+    tags: list[str] = []
     cost_price: float | None = None
     weight_grams: int | None = None
     supplier: str | None = None
@@ -94,7 +138,9 @@ class UpdateProductRequest(BaseModel):
     title: str | None = None
     isbn: str | None = None
     description: str | None = None
+    long_description: str | None = None
     price: float | None = None
+    original_price: float | None = None
     format: str | None = None
     page_count: int | None = None
     language: str | None = None
@@ -108,7 +154,12 @@ class UpdateProductRequest(BaseModel):
     is_featured: bool | None = None
     is_recommended: bool | None = None
     is_bestseller: bool | None = None
+    is_new_arrival: bool | None = None
     bestseller_rank: int | None = None
+    rating: float | None = None
+    reviews_count: int | None = None
+    badge: str | None = None
+    tags: list[str] | None = None
     cost_price: float | None = None
     weight_grams: int | None = None
     supplier: str | None = None

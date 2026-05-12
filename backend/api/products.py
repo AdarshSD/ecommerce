@@ -1,14 +1,11 @@
 import math
 import uuid
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import services.product_service as product_service
 from core.database import get_db
 from core.exceptions import AppError
-from models.product import ProductCategoryLink, ProductEntityLink
 from schemas.product_schemas import CategoryBrief, LinkedEntityBrief, ProductDetail, ProductSummary
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
@@ -18,10 +15,14 @@ def _raise(e: AppError) -> None:
     raise HTTPException(status_code=e.status_code, detail={"code": e.code, "message": e.message})
 
 
-def _enrich_detail(product) -> dict:
-    d = ProductDetail.model_validate(product).model_dump()
-    d["categories"] = [CategoryBrief.model_validate(link.category).model_dump() for link in product.category_links if link.category]
-    d["linked_entities"] = [LinkedEntityBrief.model_validate(link.entity).model_dump() for link in sorted(product.entity_links, key=lambda x: x.display_order) if link.entity]
+def _enrich(product, schema_cls) -> dict:
+    d = schema_cls.model_validate(product).model_dump()
+    cats = [CategoryBrief.model_validate(link.category).model_dump() for link in product.category_links if link.category]
+    entities = [LinkedEntityBrief.model_validate(link.entity).model_dump() for link in sorted(product.entity_links, key=lambda x: x.display_order) if link.entity]
+    d["categories"] = cats
+    d["linked_entities"] = entities
+    d["primary_author"] = entities[0]["name"] if entities else None
+    d["primary_genre"] = cats[0]["name"] if cats else None
     return d
 
 
@@ -52,6 +53,7 @@ async def list_products(
     is_featured: bool | None = None,
     is_recommended: bool | None = None,
     is_bestseller: bool | None = None,
+    is_new_arrival: bool | None = None,
     search: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -60,7 +62,7 @@ async def list_products(
     filters["page_size"] = page_size
     products, total = await product_service.list_products(db, filters)
     return {
-        "data": [ProductSummary.model_validate(p).model_dump() for p in products],
+        "data": [_enrich(p, ProductSummary) for p in products],
         "meta": {"total": total, "page": page, "page_size": page_size, "total_pages": max(1, math.ceil(total / page_size))},
     }
 
@@ -75,7 +77,7 @@ async def get_section_products(section_id: str, db: AsyncSession = Depends(get_d
         products = await product_service.get_section_products(db, section_id)
     except AppError as e:
         _raise(e)
-    return {"data": [ProductSummary.model_validate(p).model_dump() for p in products], "meta": None}
+    return {"data": [_enrich(p, ProductSummary) for p in products], "meta": None}
 
 
 @router.get(
@@ -88,4 +90,4 @@ async def get_product(product_id: uuid.UUID, db: AsyncSession = Depends(get_db))
         product = await product_service.get_product(db, product_id)
     except AppError as e:
         _raise(e)
-    return {"data": _enrich_detail(product), "meta": None}
+    return {"data": _enrich(product, ProductDetail), "meta": None}
