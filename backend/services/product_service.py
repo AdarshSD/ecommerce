@@ -1,15 +1,13 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import desc, func, nulls_last, select
+from sqlalchemy import func, nulls_last, select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.constants import ErrorCode, InventoryChangeReason
 from core.exceptions import AppError
-from models.category import Category
 from models.config import StoreConfig
-from models.linked_entity import LinkedEntity
 from models.order import InventoryLog
 from models.product import Product, ProductCategoryLink, ProductEntityLink
 
@@ -139,6 +137,34 @@ async def get_section_products(db: AsyncSession, section_id: str) -> list[Produc
     return list((await db.execute(q)).scalars().all())
 
 
+async def _ensure_rank_slot(db: AsyncSession, rank: int, exclude_id: uuid.UUID | None = None) -> None:
+    """If `rank` is already taken by another bestseller, shift all ranks >= rank up by 1."""
+    q = select(Product.id).where(
+        Product.bestseller_rank == rank,
+        Product.is_bestseller.is_(True),
+        Product.is_deleted.is_(False),
+    )
+    if exclude_id:
+        q = q.where(Product.id != exclude_id)
+    taken = (await db.execute(q)).scalar_one_or_none()
+    if taken is None:
+        return  # slot is free, nothing to do
+
+    shift = (
+        sa_update(Product)
+        .where(
+            Product.bestseller_rank >= rank,
+            Product.is_bestseller.is_(True),
+            Product.is_deleted.is_(False),
+        )
+        .values(bestseller_rank=Product.bestseller_rank + 1)
+        .execution_options(synchronize_session=False)
+    )
+    if exclude_id:
+        shift = shift.where(Product.id != exclude_id)
+    await db.execute(shift)
+
+
 async def _sync_links(db: AsyncSession, product: Product, category_ids: list[uuid.UUID], entity_ids: list[uuid.UUID]) -> None:
     await db.execute(
         ProductCategoryLink.__table__.delete().where(ProductCategoryLink.product_id == product.id)
@@ -163,6 +189,9 @@ async def create_product(db: AsyncSession, data: dict, admin_user_id: uuid.UUID)
 
     stock = data.get("stock_count", 0)
     data["is_in_stock"] = stock > 0
+
+    if data.get("is_bestseller") and data.get("bestseller_rank"):
+        await _ensure_rank_slot(db, data["bestseller_rank"])
 
     product = Product(**data)
     db.add(product)
@@ -191,6 +220,12 @@ async def update_product(db: AsyncSession, product_id: uuid.UUID, data: dict, ad
 
     category_ids = data.pop("category_ids", None)
     entity_ids = data.pop("entity_ids", None)
+
+    # Shift other bestseller ranks if the incoming rank is already taken
+    new_rank = data.get("bestseller_rank")
+    new_is_bestseller = data.get("is_bestseller", product.is_bestseller)
+    if new_is_bestseller and new_rank and new_rank != product.bestseller_rank:
+        await _ensure_rank_slot(db, new_rank, exclude_id=product.id)
 
     old_stock = product.stock_count
     for field, value in data.items():
@@ -237,10 +272,33 @@ async def list_admin_products(db: AsyncSession, filters: dict) -> tuple[list[Pro
         q = q.join(ProductCategoryLink, ProductCategoryLink.product_id == Product.id).where(
             ProductCategoryLink.category_id == filters["category_id"]
         ).distinct()
+    if filters.get("is_featured") is not None:
+        q = q.where(Product.is_featured.is_(filters["is_featured"]))
+    if filters.get("is_bestseller") is not None:
+        q = q.where(Product.is_bestseller.is_(filters["is_bestseller"]))
+    if filters.get("is_new_arrival") is not None:
+        q = q.where(Product.is_new_arrival.is_(filters["is_new_arrival"]))
+    if filters.get("in_stock") is not None:
+        q = q.where(Product.is_in_stock.is_(filters["in_stock"]))
 
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
+
+    sort = filters.get("sort", "newest")
+    if sort == "title_asc":
+        q = q.order_by(Product.title.asc())
+    elif sort == "price_asc":
+        q = q.order_by(Product.price.asc())
+    elif sort == "price_desc":
+        q = q.order_by(Product.price.desc())
+    elif sort == "bestseller":
+        q = q.order_by(nulls_last(Product.bestseller_rank.asc()))
+    elif sort == "stock_asc":
+        q = q.order_by(Product.stock_count.asc())
+    else:
+        q = q.order_by(Product.created_at.desc())
+
     page, page_size = filters.get("page", 1), filters.get("page_size", 20)
-    q = q.order_by(Product.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    q = q.offset((page - 1) * page_size).limit(page_size)
     products = list((await db.execute(
         q.options(
             selectinload(Product.category_links).selectinload(ProductCategoryLink.category),

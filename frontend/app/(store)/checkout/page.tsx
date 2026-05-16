@@ -3,87 +3,96 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, MapPin, Plus, ShoppingBag } from "lucide-react";
+import { CheckCircle, MapPin, Plus, X, ShoppingBag, Pencil, Trash2 } from "lucide-react";
 import { useCart } from "@/lib/api/cart";
 import { usePlaceOrder } from "@/lib/api/orders";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUIStore } from "@/lib/store/uiStore";
-import { api } from "@/lib/api/client";
-
-interface Address {
-  id: string;
-  full_name: string;
-  line_1: string;
-  line_2?: string;
-  city: string;
-  postcode: string;
-  country_code: string;
-  is_default: boolean;
-}
-
-const inputCls = "w-full px-4 py-3 rounded-xl border text-sm outline-none transition-all";
-const inputStyle = { background: "var(--color-background)", borderColor: "var(--color-border)", color: "var(--color-text-primary)" };
-
-function FieldInput({ label, value, onChange, required = true }: { label: string; value: string; onChange: (v: string) => void; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--color-text-secondary)" }}>{label}</label>
-      <input
-        required={required} value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputCls} style={inputStyle}
-        onFocus={(e) => (e.target.style.borderColor = "var(--color-primary)")}
-        onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
-      />
-    </div>
-  );
-}
+import {
+  useAddresses, useCreateAddress, useUpdateAddress, useDeleteAddress,
+  addressDisplayLabel, LABEL_COLOURS, CreateAddressInput, Address,
+} from "@/lib/api/addresses";
+import AddressForm from "@/components/store/AddressForm";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const { data: cart } = useCart();
-  const placeOrder = usePlaceOrder();
-  const { addToast } = useUIStore();
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  const user   = useAuthStore((s) => s.user);
+  const { data: cart }    = useCart();
+  const placeOrder        = usePlaceOrder();
+  const { addToast }      = useUIStore();
+
+  const { data: addresses = [] } = useAddresses(!!user);
+  const createAddress = useCreateAddress();
+  const updateAddress = useUpdateAddress();
+  const deleteAddress = useDeleteAddress();
+
   const [selectedAddress, setSelectedAddress] = useState("");
-  const [notes, setNotes] = useState("");
-  const [confirmedOrder, setConfirmedOrder] = useState<any>(null);
-  const [newAddress, setNewAddress] = useState({ full_name: "", line_1: "", city: "", postcode: "", country_code: "US" });
-  const [showNewAddr, setShowNewAddr] = useState(false);
+  const [notes, setNotes]                     = useState("");
+  const [showAddForm, setShowAddForm]          = useState(false);
+  const [editingAddr, setEditingAddr]          = useState<Address | null>(null);
+  const [confirmedOrder, setConfirmedOrder]    = useState<any>(null);
+
+  // Pre-select first (Home) address
+  useEffect(() => {
+    if (addresses.length > 0 && !selectedAddress) {
+      setSelectedAddress(addresses[0].id);
+    }
+  }, [addresses, selectedAddress]);
 
   useEffect(() => {
-    if (!user) { router.push("/login?next=/checkout"); return; }
-    api.get("/users/me/addresses").then((res: any) => {
-      const addrs = res.data as Address[];
-      setAddresses(addrs);
-      const def = addrs.find((a) => a.is_default);
-      if (def) setSelectedAddress(def.id);
-    }).catch(() => {});
+    if (!user) router.push("/login?next=/checkout");
   }, [user, router]);
 
-  async function handleAddAddress(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleAddAddress(data: CreateAddressInput) {
     try {
-      const res = await api.post("/users/me/addresses", { ...newAddress, is_default: addresses.length === 0 }) as any;
-      const addr = res.data as Address;
-      setAddresses((prev) => [...prev, addr]);
-      setSelectedAddress(addr.id);
-      setShowNewAddr(false);
-    } catch {
-      addToast({ message: "Could not save address.", type: "error" });
+      const newAddr = await createAddress.mutateAsync(data);
+      setSelectedAddress(newAddr.id);
+      setShowAddForm(false);
+      addToast({ message: "Address saved.", type: "success" });
+    } catch (err: any) {
+      addToast({ message: err?.message ?? "Could not save address.", type: "error" });
+      throw err;
+    }
+  }
+
+  async function handleUpdateAddress(data: CreateAddressInput) {
+    if (!editingAddr) return;
+    try {
+      await updateAddress.mutateAsync({ id: editingAddr.id, ...data });
+      addToast({ message: "Address updated.", type: "success" });
+      setEditingAddr(null);
+    } catch (err: any) {
+      addToast({ message: err?.message ?? "Could not update address.", type: "error" });
+      throw err;
+    }
+  }
+
+  async function handleDeleteAddress(addr: Address) {
+    if (!confirm(`Delete this ${addressDisplayLabel(addr)} address?`)) return;
+    try {
+      await deleteAddress.mutateAsync(addr.id);
+      if (selectedAddress === addr.id) setSelectedAddress("");
+      addToast({ message: "Address removed.", type: "success" });
+    } catch (err: any) {
+      addToast({ message: err?.message ?? "Could not delete address.", type: "error" });
     }
   }
 
   function handlePlaceOrder() {
-    if (!selectedAddress) { addToast({ message: "Please select a delivery address.", type: "error" }); return; }
-    placeOrder.mutate({ address_id: selectedAddress, notes: notes || undefined }, {
-      onSuccess: (order) => setConfirmedOrder(order),
-      onError: (err: any) => addToast({ message: err?.message ?? "Checkout failed.", type: "error" }),
-    });
+    if (!selectedAddress) {
+      addToast({ message: "Please select a delivery address.", type: "error" });
+      return;
+    }
+    placeOrder.mutate(
+      { address_id: selectedAddress, notes: notes || undefined },
+      {
+        onSuccess: (order) => setConfirmedOrder(order),
+        onError: (err: any) => addToast({ message: err?.message ?? "Checkout failed.", type: "error" }),
+      }
+    );
   }
 
-  // Order confirmed screen
+  // ── Confirmed screen ───────────────────────────────────────────────────
   if (confirmedOrder) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--color-background)" }}>
@@ -95,9 +104,7 @@ export default function CheckoutPage() {
           <h1 className="font-display font-bold text-3xl mb-2" style={{ color: "var(--color-text-primary)" }}>
             Order confirmed!
           </h1>
-          <p className="text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>
-            Thank you for your purchase.
-          </p>
+          <p className="text-sm mb-1" style={{ color: "var(--color-text-secondary)" }}>Thank you for your purchase.</p>
           <p className="font-mono text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>
             {confirmedOrder.payment_reference}
           </p>
@@ -105,8 +112,8 @@ export default function CheckoutPage() {
             ${Number(confirmedOrder.total).toFixed(2)}
           </p>
           <Link href="/orders"
-                className="inline-flex items-center gap-2 font-semibold text-sm px-7 py-3.5 rounded-full"
-                style={{ background: "var(--color-primary)", color: "#FAF7F2" }}>
+            className="inline-flex items-center gap-2 font-semibold text-sm px-7 py-3.5 rounded-full"
+            style={{ background: "var(--color-primary)", color: "#FAF7F2" }}>
             View my orders
           </Link>
         </div>
@@ -114,7 +121,7 @@ export default function CheckoutPage() {
     );
   }
 
-  // Empty cart
+  // ── Empty cart ─────────────────────────────────────────────────────────
   if (!cart || cart.items.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--color-background)" }}>
@@ -143,70 +150,127 @@ export default function CheckoutPage() {
 
       <div className="max-w-4xl mx-auto px-5 sm:px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left: Delivery */}
+          {/* ── Left: Delivery ────────────────────────────────────────── */}
           <div>
-            <div className="flex items-center gap-2.5 mb-6">
-              <MapPin size={16} style={{ color: "var(--color-accent)" }} />
-              <h2 className="font-semibold" style={{ color: "var(--color-text-primary)" }}>Delivery Address</h2>
-            </div>
-
-            <div className="space-y-3 mb-4">
-              {addresses.map((addr) => (
-                <label
-                  key={addr.id}
-                  className="flex gap-3 p-4 rounded-xl border cursor-pointer transition-all"
-                  style={{
-                    borderColor: selectedAddress === addr.id ? "var(--color-primary)" : "var(--color-border)",
-                    background: selectedAddress === addr.id ? "var(--color-surface)" : "transparent",
-                  }}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <MapPin size={16} style={{ color: "var(--color-accent)" }} />
+                <h2 className="font-semibold" style={{ color: "var(--color-text-primary)" }}>Delivery Address</h2>
+              </div>
+              {!showAddForm && addresses.length < 10 && (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="inline-flex items-center gap-1 text-xs font-medium"
+                  style={{ color: "var(--color-accent)" }}
                 >
-                  <input type="radio" name="address" value={addr.id}
-                         checked={selectedAddress === addr.id}
-                         onChange={() => setSelectedAddress(addr.id)}
-                         className="mt-0.5 flex-shrink-0 accent-[var(--color-primary)]" />
-                  <div className="text-sm">
-                    <p className="font-semibold" style={{ color: "var(--color-text-primary)" }}>{addr.full_name}</p>
-                    <p style={{ color: "var(--color-text-secondary)" }}>
-                      {addr.line_1}{addr.line_2 ? `, ${addr.line_2}` : ""}
-                    </p>
-                    <p style={{ color: "var(--color-text-secondary)" }}>
-                      {addr.city}, {addr.postcode} · {addr.country_code}
-                    </p>
-                  </div>
-                </label>
-              ))}
+                  <Plus size={12} /> Add new
+                </button>
+              )}
             </div>
 
-            <button
-              onClick={() => setShowNewAddr(!showNewAddr)}
-              className="inline-flex items-center gap-1.5 text-sm font-medium mb-4"
-              style={{ color: "var(--color-accent)" }}
-            >
-              <Plus size={14} /> Add new address
-            </button>
+            {/* Saved addresses */}
+            <div className="space-y-3 mb-4">
+              {addresses.map((addr) => {
+                const badge = LABEL_COLOURS[addr.label];
+                const isEditing = editingAddr?.id === addr.id;
+                return (
+                  <div key={addr.id} className="rounded-xl border overflow-hidden transition-all"
+                       style={{
+                         borderColor: selectedAddress === addr.id ? "var(--color-primary)" : "var(--color-border)",
+                         background: selectedAddress === addr.id ? "var(--color-surface)" : "transparent",
+                       }}>
+                    {/* Radio row */}
+                    <div className="flex items-start gap-3 p-4">
+                      <input
+                        type="radio"
+                        name="address"
+                        value={addr.id}
+                        checked={selectedAddress === addr.id}
+                        onChange={() => { setSelectedAddress(addr.id); setEditingAddr(null); }}
+                        className="mt-0.5 flex-shrink-0 cursor-pointer"
+                      />
+                      <div className="flex-1 text-sm min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{ background: badge.bg, color: badge.color }}>
+                            {addressDisplayLabel(addr)}
+                          </span>
+                          <span className="font-medium truncate" style={{ color: "var(--color-text-primary)" }}>
+                            {addr.full_name}
+                          </span>
+                        </div>
+                        <p style={{ color: "var(--color-text-secondary)" }}>{addr.line_1}</p>
+                        <p style={{ color: "var(--color-text-secondary)" }}>
+                          {addr.city}{addr.state ? `, ${addr.state}` : ""} {addr.postcode}
+                        </p>
+                      </div>
+                      {/* Edit / Delete */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setEditingAddr(isEditing ? null : addr)}
+                          className="p-1.5 rounded-lg transition-colors"
+                          style={{ color: "var(--color-text-muted)" }}
+                          title="Edit"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAddress(addr)}
+                          className="p-1.5 rounded-lg transition-colors"
+                          style={{ color: "var(--color-text-muted)" }}
+                          title="Delete"
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-muted)")}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
 
-            {showNewAddr && (
-              <form onSubmit={handleAddAddress}
-                    className="rounded-2xl border p-5 space-y-4 mb-4"
-                    style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
-                <FieldInput label="Full name" value={newAddress.full_name}
-                            onChange={(v) => setNewAddress((p) => ({ ...p, full_name: v }))} />
-                <FieldInput label="Street address" value={newAddress.line_1}
-                            onChange={(v) => setNewAddress((p) => ({ ...p, line_1: v }))} />
-                <div className="grid grid-cols-2 gap-3">
-                  <FieldInput label="City" value={newAddress.city}
-                              onChange={(v) => setNewAddress((p) => ({ ...p, city: v }))} />
-                  <FieldInput label="Postcode" value={newAddress.postcode}
-                              onChange={(v) => setNewAddress((p) => ({ ...p, postcode: v }))} />
+                    {/* Inline edit form */}
+                    {isEditing && (
+                      <div className="px-4 pb-4 border-t" style={{ borderColor: "var(--color-border)" }}>
+                        <div className="pt-4">
+                          <AddressForm
+                            initial={addr}
+                            onSubmit={handleUpdateAddress}
+                            onCancel={() => setEditingAddr(null)}
+                            submitLabel="Update address"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {addresses.length === 0 && !showAddForm && (
+                <p className="text-sm text-center py-6" style={{ color: "var(--color-text-muted)" }}>
+                  No saved addresses.{" "}
+                  <button onClick={() => setShowAddForm(true)} className="font-medium" style={{ color: "var(--color-accent)" }}>
+                    Add one
+                  </button>
+                </p>
+              )}
+            </div>
+
+            {/* Add address form inline */}
+            {showAddForm && (
+              <div className="rounded-2xl border p-5 mb-4"
+                   style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-sm" style={{ color: "var(--color-text-primary)" }}>New address</h3>
+                  <button onClick={() => setShowAddForm(false)}>
+                    <X size={15} style={{ color: "var(--color-text-muted)" }} />
+                  </button>
                 </div>
-                <button type="submit"
-                        className="w-full py-3 rounded-xl text-sm font-semibold"
-                        style={{ background: "var(--color-primary)", color: "#FAF7F2" }}>
-                  Save address
-                </button>
-              </form>
+                <AddressForm onSubmit={handleAddAddress} onCancel={() => setShowAddForm(false)} />
+              </div>
             )}
 
+            {/* Delivery notes */}
             <div>
               <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--color-text-secondary)" }}>
                 Delivery notes (optional)
@@ -216,17 +280,19 @@ export default function CheckoutPage() {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="Any special instructions…"
-                className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none transition-all"
-                style={inputStyle}
-                onFocus={(e) => (e.target.style.borderColor = "var(--color-primary)")}
-                onBlur={(e) => (e.target.style.borderColor = "var(--color-border)")}
+                className="w-full px-4 py-3 rounded-xl border text-sm outline-none resize-none"
+                style={{
+                  background: "var(--color-background)",
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text-primary)",
+                }}
               />
             </div>
           </div>
 
-          {/* Right: Summary */}
+          {/* ── Right: Summary ─────────────────────────────────────────── */}
           <div>
-            <h2 className="font-semibold mb-6" style={{ color: "var(--color-text-primary)" }}>Order Summary</h2>
+            <h2 className="font-semibold mb-4" style={{ color: "var(--color-text-primary)" }}>Order Summary</h2>
             <div className="rounded-2xl border overflow-hidden"
                  style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
               <div className="divide-y" style={{ borderColor: "var(--color-border)" }}>
@@ -236,9 +302,7 @@ export default function CheckoutPage() {
                       <p className="text-sm font-medium leading-snug" style={{ color: "var(--color-text-primary)" }}>
                         {item.title}
                       </p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-                        Qty {item.quantity}
-                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>Qty {item.quantity}</p>
                     </div>
                     <span className="text-sm font-semibold flex-shrink-0" style={{ color: "var(--color-primary)" }}>
                       ${Number(item.line_total).toFixed(2)}

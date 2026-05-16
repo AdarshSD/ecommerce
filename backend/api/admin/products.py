@@ -9,7 +9,6 @@ from core.database import get_db
 from core.exceptions import AppError
 from middleware.auth_middleware import require_admin
 from models.user import User
-from models.product import ProductCategoryLink, ProductEntityLink
 from schemas.product_schemas import AdminProductResponse, CategoryBrief, CreateProductRequest, LinkedEntityBrief, UpdateProductRequest
 
 router = APIRouter(prefix="/api/admin/products", tags=["Admin — Products"])
@@ -31,16 +30,23 @@ async def list_products(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     search: str | None = None,
+    sort: str = Query("newest"),
     category_id: uuid.UUID | None = None,
+    is_featured: bool | None = None,
+    is_bestseller: bool | None = None,
+    is_new_arrival: bool | None = None,
+    in_stock: bool | None = None,
     include_deleted: bool = False,
-    admin: User = Depends(require_admin),
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    filters = {"page": page, "page_size": page_size, "include_deleted": include_deleted}
-    if search:
-        filters["search"] = search
-    if category_id:
-        filters["category_id"] = category_id
+    filters: dict = {"page": page, "page_size": page_size, "sort": sort, "include_deleted": include_deleted}
+    if search:       filters["search"] = search
+    if category_id:  filters["category_id"] = category_id
+    if is_featured   is not None: filters["is_featured"]   = is_featured
+    if is_bestseller is not None: filters["is_bestseller"] = is_bestseller
+    if is_new_arrival is not None: filters["is_new_arrival"] = is_new_arrival
+    if in_stock      is not None: filters["in_stock"]      = in_stock
     products, total = await product_service.list_admin_products(db, filters)
     return {
         "data": [_enrich(p) for p in products],
@@ -48,14 +54,27 @@ async def list_products(
     }
 
 
-@router.post("", summary="Create a product", status_code=201)
-async def create_product(
-    body: CreateProductRequest,
-    admin: User = Depends(require_admin),
+@router.get("/{product_id}", summary="Get a single product (admin, includes stock)")
+async def get_product(
+    product_id: uuid.UUID,
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     try:
-        product = await product_service.create_product(db, body.model_dump(), admin.id)
+        product = await product_service.get_product(db, product_id)
+    except AppError as e:
+        _raise(e)
+    return {"data": _enrich(product), "meta": None}
+
+
+@router.post("", summary="Create a product", status_code=201)
+async def create_product(
+    body: CreateProductRequest,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    try:
+        product = await product_service.create_product(db, body.model_dump(), _admin.id)
     except AppError as e:
         _raise(e)
     return {"data": _enrich(product), "meta": None}
@@ -65,11 +84,11 @@ async def create_product(
 async def update_product(
     product_id: uuid.UUID,
     body: UpdateProductRequest,
-    admin: User = Depends(require_admin),
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     try:
-        product = await product_service.update_product(db, product_id, body.model_dump(exclude_none=True), admin.id)
+        product = await product_service.update_product(db, product_id, body.model_dump(exclude_none=True), _admin.id)
     except AppError as e:
         _raise(e)
     return {"data": _enrich(product), "meta": None}
@@ -78,7 +97,7 @@ async def update_product(
 @router.delete("/{product_id}", summary="Soft-delete a product", status_code=204)
 async def delete_product(
     product_id: uuid.UUID,
-    admin: User = Depends(require_admin),
+    _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     try:

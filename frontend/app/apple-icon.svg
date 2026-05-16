@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- Background -->
+  <rect width="180" height="180" rx="38" fill="#1A3A2A"/>
+
+  <!-- Subtle radial glow -->
+  <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+    <stop offset="0%" stop-color="#2D5438"/>
+    <stop offset="100%" stop-color="#1A3A2A"/>
+  </radialGradient>
+  <rect width="180" height="180" rx="38" fill="url(#glow)"/>
+
+  <!-- Book back (depth shadow) -->
+  <rect x="46" y="42" width="88" height="100" rx="10" fill="#0D2218"/>
+
+  <!-- Book pages (cream) -->
+  <rect x="50" y="38" width="84" height="100" rx="8" fill="#F0EBE3"/>
+
+  <!-- Gold spine -->
+  <rect x="50" y="38" width="20" height="100" rx="6" fill="#C9A84C"/>
+
+  <!-- Page lines -->
+  <rect x="78" y="68" width="42" height="7" rx="3.5" fill="#1A3A2A" opacity="0.15"/>
+  <rect x="78" y="82" width="32" height="7" rx="3.5" fill="#1A3A2A" opacity="0.15"/>
+  <rect x="78" y="96" width="38" height="7" rx="3.5" fill="#1A3A2A" opacity="0.15"/>
+  <rect x="78" y="110" width="28" height="7" rx="3.5" fill="#1A3A2A" opacity="0.1"/>
+
+  <!-- Gold leaf from spine top -->
+  <path d="M60 38 C60 22, 100 16, 108 28 C116 40, 78 52, 60 38Z" fill="#C9A84C"/>
+  <!-- Leaf highlight vein -->
+  <path d="M62 37 C74 28, 96 22, 106 29" stroke="#FAF7F2" stroke-width="2.5" fill="none" opacity="0.4" stroke-linecap="round"/>
+
+  <!-- Subtle bottom shadow on pages -->
+  <rect x="50" y="124" width="84" height="14" rx="0 0 8 0" fill="#1A3A2A" opacity="0.06"/>
+</svg>

@@ -8,10 +8,10 @@ import { useRegister } from "@/lib/api/auth";
 import { useUIStore } from "@/lib/store/uiStore";
 
 function AuthInput({
-  label, type, value, onChange, placeholder,
+  label, type, value, onChange, placeholder, required = true,
 }: {
   label: string; type: string; value: string;
-  onChange: (v: string) => void; placeholder?: string;
+  onChange: (v: string) => void; placeholder?: string; required?: boolean;
 }) {
   const [show, setShow] = useState(false);
   const isPassword = type === "password";
@@ -21,6 +21,7 @@ function AuthInput({
       <label className="block text-xs font-semibold mb-1.5 tracking-wide"
              style={{ color: "var(--color-text-secondary)" }}>
         {label}
+        {required && <span className="ml-0.5" style={{ color: "#ef4444" }}>*</span>}
       </label>
       <div className="relative">
         <input

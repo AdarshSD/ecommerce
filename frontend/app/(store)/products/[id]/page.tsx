@@ -12,7 +12,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const { data: product, isLoading } = useProduct(id);
   const addToCart = useAddToCart();
-  const { addToast, openCartDrawer } = useUIStore();
+  const { addToast } = useUIStore();
 
   // Related: same primary category, exclude current
   const primaryCatId = product?.categories?.[0]?.id;
@@ -24,10 +24,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     addToCart.mutate(
       { product_id: product.id, quantity: 1 },
       {
-        onSuccess: () => {
-          addToast({ message: `"${product.title}" added to cart`, type: "success" });
-          openCartDrawer();
-        },
+        onSuccess: () => addToast({ message: `"${product.title}" added to cart`, type: "success" }),
         onError: () => addToast({ message: "Could not add to cart", type: "error" }),
       }
     );

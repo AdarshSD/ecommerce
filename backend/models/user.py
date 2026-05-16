@@ -59,11 +59,14 @@ class Address(UUIDPrimaryKey, TimestampMixin, Base):
     __tablename__ = "addresses"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(10), nullable=False, default="other")   # 'home' | 'work' | 'other'
+    label_name: Mapped[str | None] = mapped_column(String(100), nullable=True)        # required when label='other'
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     line_1: Mapped[str] = mapped_column(String(200), nullable=False)
     line_2: Mapped[str | None] = mapped_column(String(200), nullable=True)
     city: Mapped[str] = mapped_column(String(100), nullable=False)
-    county: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    county: Mapped[str | None] = mapped_column(String(100), nullable=True)            # kept for future intl use
     postcode: Mapped[str] = mapped_column(String(20), nullable=False)
     country_code: Mapped[str] = mapped_column(String(2), nullable=False, default="US")
     phone_number: Mapped[str | None] = mapped_column(String(30), nullable=True)

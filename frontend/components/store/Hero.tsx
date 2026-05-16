@@ -16,7 +16,7 @@ export default function Hero() {
 
   return (
     <section
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="relative min-h-screen flex items-center overflow-hidden -mt-[72px]"
       style={{ background: "linear-gradient(135deg, #0D1F0D 0%, #1A3A2A 50%, #0D2218 100%)" }}
     >
       {/* Decorative radial glows */}

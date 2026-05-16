@@ -61,6 +61,7 @@ export default function ForgotPasswordPage() {
           <label className="block text-xs font-semibold mb-1.5 tracking-wide"
                  style={{ color: "var(--color-text-secondary)" }}>
             Email address
+            <span className="ml-0.5" style={{ color: "#ef4444" }}>*</span>
           </label>
           <input
             type="email"

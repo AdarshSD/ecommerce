@@ -22,6 +22,7 @@ function AuthInput({
       <label className="block text-xs font-semibold mb-1.5 tracking-wide"
              style={{ color: "var(--color-text-secondary)" }}>
         {label}
+        {required && <span className="ml-0.5" style={{ color: "#ef4444" }}>*</span>}
       </label>
       <div className="relative">
         <input

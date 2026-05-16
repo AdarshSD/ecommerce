@@ -13,7 +13,7 @@ interface Props {
 
 export default function ProductCard({ product, currencySymbol = "$" }: Props) {
   const addToCart = useAddToCart();
-  const { addToast, openCartDrawer } = useUIStore();
+  const { addToast } = useUIStore();
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -21,10 +21,7 @@ export default function ProductCard({ product, currencySymbol = "$" }: Props) {
     addToCart.mutate(
       { product_id: product.id, quantity: 1 },
       {
-        onSuccess: () => {
-          addToast({ message: `"${product.title}" added to cart`, type: "success" });
-          openCartDrawer();
-        },
+        onSuccess: () => addToast({ message: `"${product.title}" added to cart`, type: "success" }),
         onError: () => addToast({ message: "Could not add to cart", type: "error" }),
       }
     );

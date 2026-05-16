@@ -44,6 +44,7 @@ from api.cart import router as cart_router  # noqa: E402
 from api.orders import router as orders_router  # noqa: E402
 from api.admin.orders import router as admin_orders_router  # noqa: E402
 from api.admin.inventory import router as admin_inventory_router  # noqa: E402
+from api.admin.media import router as admin_media_router  # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -59,6 +60,7 @@ app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(admin_orders_router)
 app.include_router(admin_inventory_router)
+app.include_router(admin_media_router)
 
 
 @app.get("/health", tags=["Health"], summary="Health check")
